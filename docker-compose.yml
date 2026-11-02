@@ -4,19 +4,42 @@ services:
     container_name: mnt-postgres
     env_file:
       - .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
+    networks:
+      - mnt-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  backend:
+    build:
+      context: .
+      target: runtime
+    container_name: mnt-backend
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    ports:
+      - "${PORT}:${PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mnt-network
+    init: true
+    restart: unless-stopped
+
+networks:
+  mnt-network:
+    driver: bridge
 
 volumes:
   postgres_data:
