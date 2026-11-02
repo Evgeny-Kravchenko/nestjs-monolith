@@ -1,0 +1,20 @@
+# Dev override: use together with docker-compose.yml and
+# `--env-file .env.development.local` (see `make run-dev`), so ${VAR}
+# interpolation in the base file also comes from the dev env file.
+services:
+  postgres:
+    env_file: !override
+      - .env.development.local
+
+  backend:
+    build:
+      context: .
+      target: build
+    env_file: !override
+      - .env.development.local
+    environment:
+      NODE_ENV: development
+    command: npm run start:dev
+    volumes:
+      - ./src:/app/src
+      - /app/node_modules

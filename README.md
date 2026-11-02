@@ -27,11 +27,22 @@ src/
 └── main.ts          # Entry point
 ```
 
+## Docker
+
+The backend and Postgres run on one bridge network (`mnt-network`); the backend reaches the database at host `postgres`, port `5432` (`POSTGRES_HOST` and `POSTGRES_PORT` are overridden in `docker-compose.yml`; everything else comes from `.env`). Postgres data lives in the `postgres_data` volume.
+
+```bash
+docker compose up -d --build                                              # backend + Postgres, production image
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build # hot reload: ./src is bind-mounted
+```
+
+Migrations are not run by the image. For local dev you can set `POSTGRES_MIGRATIONS_RUN=true` in `.env`; otherwise apply them with the `migration:run` npm script from the host against the published Postgres port (the CLI needs ts-node and `src/`, so it cannot run inside the runtime image). The dev override mounts only `./src`; after changing dependencies, rebuild with `--build`.
+
 ## Database
 
 PostgreSQL and TypeORM are already wired in. Use them for new modules — no extra setup.
 
-- **Local Postgres:** `docker compose up -d` (image and credentials from `.env` / `.env.example`)
+- **Local Postgres only:** `docker compose up -d postgres` (image and credentials from `.env` / `.env.example`)
 - **Connection:** `DatabaseModule` (`src/core/database`) is imported in `AppModule`
 - **Entities:** any `*.entity.ts` under `src/` is auto-loaded
 - **Repositories:** `TypeOrmModule.forFeature([YourEntity])` in a feature module, then `@InjectRepository(YourEntity)`
