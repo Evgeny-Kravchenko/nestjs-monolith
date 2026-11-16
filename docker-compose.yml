@@ -16,6 +16,49 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local SMTP interceptor for verification emails: SMTP on 1025, web UI on 8025
+  mailpit:
+    image: axllent/mailpit:v1.33
+    container_name: mnt-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - mnt-network
+
+  # Database UI on http://localhost:5050 (local only, no login). The connection to `postgres`
+  # and its password are generated from the POSTGRES_* values on first start.
+  pgadmin:
+    image: dpage/pgadmin4:9.19
+    container_name: mnt-pgadmin
+    environment:
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@domain.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_SERVER_JSON_FILE: /tmp/servers.json
+      PGPASS_FILE: /tmp/pgpass
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        umask 077
+        printf 'postgres:5432:*:%s:%s\n' "$$DB_USER" "$$DB_PASSWORD" > /tmp/pgpass
+        printf '{"Servers":{"1":{"Name":"mnt-postgres","Group":"Servers","Host":"postgres","Port":5432,"MaintenanceDB":"%s","Username":"%s","SSLMode":"prefer","PassFile":"/var/lib/pgadmin/.pgpass"}}}' "$$DB_NAME" "$$DB_USER" > /tmp/servers.json
+        exec /entrypoint.sh
+    ports:
+      - "127.0.0.1:5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mnt-network
+
   backend:
     build:
       context: .
@@ -43,4 +86,6 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  pgadmin_data:
     driver: local

@@ -18,3 +18,19 @@ services:
     volumes:
       - ./src:/app/src
       - /app/node_modules
+
+  # Development only: local stand-in for the frontend page the magic link points to
+  # (http://localhost:4200/register/confirm); forwards its confirm request to the backend
+  confirm-page:
+    image: nginx:1.30-alpine
+    container_name: mnt-confirm-page
+    ports:
+      - "4200:80"
+    environment:
+      BACKEND_PORT: ${PORT}
+    volumes:
+      - ./dev/confirm-page/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./dev/confirm-page/index.html:/usr/share/nginx/html/index.html:ro
+      - ./dev/confirm-page/confirm.js:/usr/share/nginx/html/confirm.js:ro
+    networks:
+      - mnt-network

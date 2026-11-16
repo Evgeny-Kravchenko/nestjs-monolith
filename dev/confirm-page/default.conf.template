@@ -1,0 +1,49 @@
+# Development only: stand-in for the frontend page the magic link points to.
+# Rendered by the nginx image at start; ${BACKEND_PORT} is the only environment variable here,
+# every other $name is an nginx variable.
+
+# Path without the query string, so tokens never reach the access log
+log_format noquery '$remote_addr [$time_local] "$request_method $uri" $status $body_bytes_sent';
+
+server {
+    listen 80;
+    server_tokens off;
+    access_log /var/log/nginx/access.log noquery;
+
+    # Docker's embedded DNS, re-resolved at request time (see the proxy below)
+    resolver 127.0.0.11 valid=10s;
+
+    location = /register/confirm {
+        root /usr/share/nginx/html;
+        try_files /index.html =404;
+
+        add_header Referrer-Policy no-referrer always;
+        add_header Cache-Control no-store always;
+        add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
+    }
+
+    location = /register/confirm.js {
+        root /usr/share/nginx/html;
+        try_files /confirm.js =404;
+
+        add_header Referrer-Policy no-referrer always;
+        add_header Cache-Control no-store always;
+        add_header Content-Security-Policy "default-src 'none'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
+    }
+
+    location = /auth/register/confirm {
+        if ($request_method != POST) {
+            return 405;
+        }
+
+        # A variable makes nginx resolve the backend per request: it starts before the backend
+        # exists, follows a recreated backend container, and answers 502 while it is stopped
+        set $backend http://backend:${BACKEND_PORT};
+        proxy_pass $backend;
+        proxy_set_header Host $host;
+    }
+
+    location / {
+        return 404;
+    }
+}
