@@ -1,9 +1,16 @@
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import compression from '@fastify/compress';
 import fastifyCookie from '@fastify/cookie';
 import { ValidationPipe } from '@nestjs/common';
-import { initializeTransactionalContext, StorageDriver } from 'typeorm-transactional';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import {
+  initializeTransactionalContext,
+  StorageDriver,
+} from 'typeorm-transactional';
 
 import { AppModule } from './core/app/app.module';
 import { ConfigService } from '@/core/config/config.service';
@@ -13,7 +20,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter()
+    new FastifyAdapter(),
   );
 
   await app.register(compression);
@@ -23,6 +30,18 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
+
+  const configService = app.get(ConfigService);
+
+  if (configService.get('NODE_ENV') === 'development') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('nestjs-monolith')
+      .setVersion('1.0')
+      .build();
+    SwaggerModule.setup('docs', app, () =>
+      SwaggerModule.createDocument(app, swaggerConfig),
+    );
+  }
 
   app.enableCors({
     origin: [
@@ -35,8 +54,6 @@ async function bootstrap() {
     preflightContinue: false,
     optionsSuccessStatus: 204,
   });
-
-  const configService = app.get(ConfigService);
 
   await app.register(fastifyCookie, {
     secret: configService.get('COOKIE_SECRET'),

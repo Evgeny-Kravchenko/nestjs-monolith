@@ -11,13 +11,16 @@ import { DataSource } from 'typeorm';
  * this file exists solely so the CLI can load the same connection
  * settings from .env without booting the whole Nest application.
  */
-export const dataSource = new DataSource({
+const dataSource = new DataSource({
   type: 'postgres',
   host: process.env.POSTGRES_HOST,
   port: Number(process.env.POSTGRES_PORT),
   username: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
+
+  // gen_random_uuid() is built into Postgres 13+; keep in sync with DatabaseModule
+  uuidExtension: 'pgcrypto',
 
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
 

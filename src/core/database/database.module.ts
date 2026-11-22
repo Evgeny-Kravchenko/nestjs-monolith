@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { addTransactionalDataSource, deleteDataSourceByName } from 'typeorm-transactional';
+import {
+  addTransactionalDataSource,
+  deleteDataSourceByName,
+} from 'typeorm-transactional';
 
 import { ConfigModule } from '@/core/config/config.module';
 import { ConfigService } from '@/core/config/config.service';
@@ -20,11 +23,16 @@ import { ConfigService } from '@/core/config/config.service';
         password: config.get('POSTGRES_PASSWORD'),
         database: config.get('POSTGRES_DB'),
 
+        // gen_random_uuid() is built into Postgres 13+; keep in sync with src/database/data-source.ts
+        uuidExtension: 'pgcrypto',
+
         entities: [__dirname + '/../../**/*.entity{.ts,.js}'],
         autoLoadEntities: true,
 
         migrationsTableName: 'migrations',
-        migrations: [__dirname + '/../../database/migrations/*.migration{.ts,.js}'],
+        migrations: [
+          __dirname + '/../../database/migrations/*.migration{.ts,.js}',
+        ],
         migrationsRun: String(config.get('POSTGRES_MIGRATIONS_RUN')) === 'true',
 
         synchronize: String(config.get('POSTGRES_SYNCHRONIZE')) === 'true',
